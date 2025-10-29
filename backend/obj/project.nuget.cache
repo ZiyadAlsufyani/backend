@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "5oFPNVjfk0w=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\zezo_\\Documents\\Term 251\\ICS321\\Project\\Project-1\\backend\\backend\\backend.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\zezo_\\.nuget\\packages\\microsoft.aspnetcore.openapi\\8.0.6\\microsoft.aspnetcore.openapi.8.0.6.nupkg.sha512",
+    "C:\\Users\\zezo_\\.nuget\\packages\\microsoft.openapi\\1.4.3\\microsoft.openapi.1.4.3.nupkg.sha512"
+  ],
+  "logs": []
+}
