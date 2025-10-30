@@ -11,6 +11,7 @@
           "Microsoft.AspNetCore.OpenApi": "8.0.6",
           "Microsoft.EntityFrameworkCore": "8.0.0",
           "Microsoft.EntityFrameworkCore.Design": "8.0.0",
+          "MySqlConnector": "2.3.5",
           "Pomelo.EntityFrameworkCore.MySql": "8.0.0",
           "Swashbuckle.AspNetCore": "6.5.0"
         },

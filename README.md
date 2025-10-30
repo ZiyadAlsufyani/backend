@@ -46,10 +46,14 @@ backend/
 - **CORS Policy**: "AllowMyFrontend" allows all origins, methods (GET, POST, PUT, DELETE), and headers
 - **Swagger/OpenAPI**: Enabled for API documentation and testing
 
-### ✅ Sample Controller
-- `StablesController` demonstrates full CRUD operations
+### ✅ API Controllers
+- **`StablesController`**: Full CRUD operations for Stables (sample/demo)
+- **`RacingController`**: Complete Admin and Guest endpoints
+  - Admin: Add races, delete owners (via stored procedure), move horses, approve trainers
+  - Guest: Query horses by owner, get trainer statistics, track statistics
 - Uses async/await pattern for database operations
 - Proper HTTP status codes and RESTful conventions
+- DTOs for clean JSON responses
 
 ## NuGet Packages Installed
 
@@ -93,12 +97,29 @@ The API is configured with a permissive CORS policy named "AllowMyFrontend":
 
 ## API Endpoints
 
-### Sample Endpoints (Stables)
+### Racing Controller (Main API)
+
+#### Admin Endpoints
+- `POST /api/races` - Add a new race with results
+- `DELETE /api/owners/{id}` - Delete owner using sp_DeleteOwner stored procedure
+- `PUT /api/horses/{horseId}/stable/{newStableId}` - Move horse to new stable
+- `PUT /api/trainers/{trainerId}/approve/{stableId}` - Approve trainer to join stable
+
+#### Guest Endpoints
+- `GET /api/horses/by-owner-lastname?lastName={name}` - Get horses by owner last name
+- `GET /api/trainers/winners` - Get trainers with first place winners
+- `GET /api/trainers/winnings` - Get trainers sorted by total prize winnings
+- `GET /api/tracks/stats` - Get track statistics with race and participant counts
+
+### Stables Controller (Sample CRUD)
 - `GET /api/Stables` - Get all stables
 - `GET /api/Stables/{id}` - Get a specific stable
 - `POST /api/Stables` - Create a new stable
 - `PUT /api/Stables/{id}` - Update a stable
 - `DELETE /api/Stables/{id}` - Delete a stable
+
+📖 **See [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for detailed endpoint documentation**  
+🧪 **See [TESTING_GUIDE.md](TESTING_GUIDE.md) for testing examples**
 
 ### Swagger UI
 When running in Development mode, access Swagger UI at:
@@ -106,15 +127,26 @@ When running in Development mode, access Swagger UI at:
 https://localhost:{port}/swagger
 ```
 
-## Next Steps
+## API Features
 
-To create controllers for other entities, follow the pattern in `StablesController.cs`:
+### Admin Operations
+✅ **Race Management**: Create races with multiple results in one transaction  
+✅ **Owner Management**: Delete owners using database stored procedure  
+✅ **Horse Management**: Transfer horses between stables with validation  
+✅ **Trainer Management**: Approve and assign trainers to stables  
 
-1. Create a new controller class in the `Controllers` folder
-2. Inherit from `ControllerBase`
-3. Add the `[Route("api/[controller]")]` and `[ApiController]` attributes
-4. Inject `RacingDbContext` via constructor
-5. Implement CRUD operations using Entity Framework Core
+### Guest Queries
+✅ **Owner-based Search**: Find all horses owned by specific last name  
+✅ **Trainer Statistics**: View trainers ranked by wins and prize money  
+✅ **Track Analytics**: Comprehensive statistics on races and participants  
+✅ **Performance Metrics**: Aggregate data on winnings and achievements  
+
+### Technical Features
+- **DTOs**: Clean data transfer objects for structured JSON responses
+- **Stored Procedures**: Direct execution of MySQL stored procedures
+- **LINQ Queries**: Efficient database queries with Entity Framework
+- **Error Handling**: Comprehensive error messages and status codes
+- **API Documentation**: Swagger/OpenAPI integration for testing
 
 ## Running the Application
 
