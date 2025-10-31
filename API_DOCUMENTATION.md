@@ -3,6 +3,10 @@
 ## Overview
 The `RacingController` provides comprehensive endpoints for both Admin and Guest users to interact with the Horse Racing Database System.
 
+**Base URLs:**
+- **Local Development:** `https://localhost:5001`
+- **Azure Production:** `https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net`
+
 ---
 
 ## 🔐 Admin Endpoints

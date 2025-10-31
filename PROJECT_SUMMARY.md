@@ -139,7 +139,8 @@ dotnet run
 ```
 
 ### 4. Test with Swagger
-Navigate to: `https://localhost:5001/swagger`
+- **Local Development:** `https://localhost:5001/swagger`
+- **Azure Production:** `https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net/swagger`
 
 ---
 
@@ -246,9 +247,9 @@ This project demonstrates:
 
 ---
 
-## 🏆 Project Status: **COMPLETE** ✅
+## 🏆 Project Status: **COMPLETE & DEPLOYED** ✅
 
-All requirements implemented and tested successfully!
+All requirements implemented, tested, and deployed to Azure!
 
 - ✅ Database schema created
 - ✅ Triggers and stored procedures working
@@ -260,7 +261,14 @@ All requirements implemented and tested successfully!
 - ✅ Swagger documentation
 - ✅ Project builds successfully
 - ✅ Comprehensive documentation
+- ✅ **Deployed to Azure App Service**
 
 ---
 
-**Ready for deployment and demonstration!** 🎉
+## 🚀 Deployment Information
+
+**Production URL:** `https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net`
+
+**Swagger UI:** `https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net/swagger`
+
+**Ready for production use and demonstration!** 🎉

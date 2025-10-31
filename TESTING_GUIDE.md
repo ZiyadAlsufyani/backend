@@ -20,13 +20,14 @@
    ```
 
 4. **Access Swagger UI:**
-   ```
-   https://localhost:5001/swagger
-   ```
+   - Local: `https://localhost:5001/swagger`
+   - Production: `https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net/swagger`
 
 ---
 
 ## Quick Test Commands (PowerShell)
+
+**Note:** Replace `https://localhost:5001` with `https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net` to test production API.
 
 ### Admin Endpoints
 
@@ -97,6 +98,8 @@ Invoke-RestMethod -Uri "https://localhost:5001/api/tracks/stats" -Method GET -Sk
 ---
 
 ## Using curl (Cross-platform)
+
+**Note:** Replace `https://localhost:5001` with `https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net` to test production API.
 
 ### Admin Endpoints
 

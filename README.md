@@ -82,14 +82,22 @@ dotnet run
 ```
 
 The API will start on:
-- **HTTPS:** `https://localhost:5001`
-- **HTTP:** `http://localhost:5000`
+- **Local HTTPS:** `https://localhost:5001`
+- **Local HTTP:** `http://localhost:5000`
+- **Azure Production:** `https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net`
 
 ### Step 7: Test the API
 
+**For Local Development:**
 Open your browser and navigate to the Swagger UI:
 ```
 https://localhost:5001/swagger
+```
+
+**For Azure Production:**
+Access the live API at:
+```
+https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net/swagger
 ```
 
 You can now test all endpoints interactively!
@@ -98,7 +106,9 @@ You can now test all endpoints interactively!
 
 ## 📚 API Documentation
 
-**Base URL:** `https://localhost:5001`
+**Base URLs:**
+- **Local Development:** `https://localhost:5001`
+- **Azure Production:** `https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net`
 
 ### 🔧 Admin Endpoints
 
@@ -151,6 +161,8 @@ Executes the `sp_DeleteOwner` stored procedure to delete an owner and all associ
 **Example Request:**
 ```
 DELETE https://localhost:5001/api/owners/owner5
+# Or for production:
+DELETE https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net/api/owners/owner5
 ```
 
 **Success Response (200 OK):**
@@ -177,6 +189,8 @@ Transfers a horse from its current stable to a new stable.
 **Example Request:**
 ```
 PUT https://localhost:5001/api/horses/horse8/stable/stable2
+# Or for production:
+PUT https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net/api/horses/horse8/stable/stable2
 ```
 
 **Success Response (200 OK):**
@@ -208,6 +222,8 @@ Approves and assigns a trainer to a specific stable.
 **Example Request:**
 ```
 PUT https://localhost:5001/api/trainers/trainer3/approve/stable6
+# Or for production:
+PUT https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net/api/trainers/trainer3/approve/stable6
 ```
 
 **Success Response (200 OK):**
@@ -234,6 +250,8 @@ Retrieves all horses owned by owners with a specific last name, including stable
 **Example Request:**
 ```
 GET https://localhost:5001/api/horses/by-owner-lastname?lastName=Mohammed
+# Or for production:
+GET https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net/api/horses/by-owner-lastname?lastName=Mohammed
 ```
 
 **Success Response (200 OK):**
@@ -327,6 +345,8 @@ Retrieves all trainers whose stable's horses have won first place, sorted by num
 **Example Request:**
 ```
 GET https://localhost:5001/api/trainers/winners
+# Or for production:
+GET https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net/api/trainers/winners
 ```
 
 **Success Response (200 OK):**
@@ -414,6 +434,8 @@ Retrieves all trainers sorted by total prize money won by horses in their stable
 **Example Request:**
 ```
 GET https://localhost:5001/api/trainers/winnings
+# Or for production:
+GET https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net/api/trainers/winnings
 ```
 
 **Success Response (200 OK):**
@@ -477,6 +499,8 @@ Retrieves comprehensive statistics for all tracks, sorted by total races.
 **Example Request:**
 ```
 GET https://localhost:5001/api/tracks/stats
+# Or for production:
+GET https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net/api/tracks/stats
 ```
 
 **Success Response (200 OK):**
@@ -758,8 +782,12 @@ dotnet build
 3. **CORS is enabled** - no issues calling from any origin during development
 4. **Date/Time format**: Dates are in ISO 8601 format (`YYYY-MM-DD`)
 5. **Query parameters** are case-insensitive for searching
-6. **Test with Swagger** at `https://localhost:5001/swagger` before integrating
-7. **Base URL**: Always use `https://localhost:5001` as the base URL
+6. **Test with Swagger**:
+   - Local: `https://localhost:5001/swagger`
+   - Production: `https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net/swagger`
+7. **Base URLs**:
+   - Local Development: `https://localhost:5001`
+   - Azure Production: `https://ics321-racing-api-gdd6g6hvdcbch7bu.uaenorth-01.azurewebsites.net`
 8. **Content-Type**: All POST/PUT requests require `Content-Type: application/json` header
 
 ### Common HTTP Status Codes
