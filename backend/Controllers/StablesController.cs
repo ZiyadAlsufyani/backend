@@ -20,14 +20,19 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Stable>>> GetStables()
         {
-            return await _context.Stables.ToListAsync();
+            var stables = await _context.Stables
+                .FromSqlRaw("SELECT * FROM Stable")
+                .ToListAsync();
+            return Ok(stables);
         }
 
         // GET: api/Stables/stablel
         [HttpGet("{id}")]
         public async Task<ActionResult<Stable>> GetStable(string id)
         {
-            var stable = await _context.Stables.FindAsync(id);
+            var stable = await _context.Stables
+                .FromSql($"SELECT * FROM Stable WHERE stableId = {id}")
+                .FirstOrDefaultAsync();
 
             if (stable == null)
             {
@@ -41,10 +46,15 @@ namespace backend.Controllers
         [HttpPost]
         public async Task<ActionResult<Stable>> PostStable(Stable stable)
         {
-            _context.Stables.Add(stable);
-            await _context.SaveChangesAsync();
+            await _context.Database.ExecuteSqlAsync(
+                $"INSERT INTO Stable (stableId, stableName, location, colors) VALUES ({stable.StableId}, {stable.StableName}, {stable.Location}, {stable.Colors})"
+            );
 
-            return CreatedAtAction(nameof(GetStable), new { id = stable.StableId }, stable);
+            var createdStable = await _context.Stables
+                .FromSql($"SELECT * FROM Stable WHERE stableId = {stable.StableId}")
+                .FirstOrDefaultAsync();
+
+            return CreatedAtAction(nameof(GetStable), new { id = stable.StableId }, createdStable);
         }
 
         // PUT: api/Stables/stablel
@@ -56,46 +66,47 @@ namespace backend.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(stable).State = EntityState.Modified;
-
             try
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!StableExists(id))
+                var stableExists = await _context.Database
+                    .SqlQuery<int>($"SELECT COUNT(*) as Value FROM Stable WHERE stableId = {id}")
+                    .FirstOrDefaultAsync() > 0;
+
+                if (!stableExists)
                 {
                     return NotFound();
                 }
-                else
-                {
-                    throw;
-                }
-            }
 
-            return NoContent();
+                await _context.Database.ExecuteSqlAsync(
+                    $"UPDATE Stable SET stableName = {stable.StableName}, location = {stable.Location}, colors = {stable.Colors} WHERE stableId = {id}"
+                );
+
+                return NoContent();
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         // DELETE: api/Stables/stablel
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStable(string id)
         {
-            var stable = await _context.Stables.FindAsync(id);
-            if (stable == null)
+            var stableExists = await _context.Database
+                .SqlQuery<int>($"SELECT COUNT(*) as Value FROM Stable WHERE stableId = {id}")
+                .FirstOrDefaultAsync() > 0;
+
+            if (!stableExists)
             {
                 return NotFound();
             }
 
-            _context.Stables.Remove(stable);
-            await _context.SaveChangesAsync();
+            await _context.Database.ExecuteSqlAsync(
+                $"DELETE FROM Stable WHERE stableId = {id}"
+            );
 
             return NoContent();
-        }
-
-        private bool StableExists(string id)
-        {
-            return _context.Stables.Any(e => e.StableId == id);
         }
     }
 }

@@ -31,61 +31,61 @@ namespace backend.Controllers
         {
             try
             {
-                // Verify the track exists
-                var trackExists = await _context.Tracks.AnyAsync(t => t.TrackName == addRaceDto.TrackName);
+                // Verify the track exists using raw SQL
+                var trackExists = await _context.Database
+                    .SqlQuery<int>($"SELECT COUNT(*) as Value FROM Track WHERE TrackName = {addRaceDto.TrackName}")
+                    .FirstOrDefaultAsync() > 0;
+                    
                 if (!trackExists)
                 {
                     return BadRequest(new { message = $"Track '{addRaceDto.TrackName}' does not exist. Please use an existing track or create the track first." });
                 }
 
-                // Verify the race doesn't already exist
-                var raceExists = await _context.Races.AnyAsync(r => r.RaceId == addRaceDto.RaceId);
+                // Verify the race doesn't already exist using raw SQL
+                var raceExists = await _context.Database
+                    .SqlQuery<int>($"SELECT COUNT(*) as Value FROM Race WHERE RaceId = {addRaceDto.RaceId}")
+                    .FirstOrDefaultAsync() > 0;
+                    
                 if (raceExists)
                 {
                     return BadRequest(new { message = $"Race with ID '{addRaceDto.RaceId}' already exists." });
                 }
 
-                // Create the race
-                var race = new Race
-                {
-                    RaceId = addRaceDto.RaceId,
-                    RaceName = addRaceDto.RaceName,
-                    TrackName = addRaceDto.TrackName,
-                    RaceDate = addRaceDto.RaceDate,
-                    RaceTime = addRaceDto.RaceTime
-                };
-
-                _context.Races.Add(race);
-                await _context.SaveChangesAsync();
+                // Insert the race using raw SQL
+                await _context.Database.ExecuteSqlAsync(
+                    $"INSERT INTO Race (raceId, raceName, trackName, raceDate, raceTime) VALUES ({addRaceDto.RaceId}, {addRaceDto.RaceName}, {addRaceDto.TrackName}, {addRaceDto.RaceDate}, {addRaceDto.RaceTime})"
+                );
 
                 // Add race results if provided
                 if (addRaceDto.Results != null && addRaceDto.Results.Any())
                 {
-                    // Verify all horses exist
-                    var horseIds = addRaceDto.Results.Select(r => r.HorseId).Distinct().ToList();
-                    var existingHorseIds = await _context.Horses
-                        .Where(h => horseIds.Contains(h.HorseId))
-                        .Select(h => h.HorseId)
-                        .ToListAsync();
-                    
-                    var missingHorses = horseIds.Except(existingHorseIds).ToList();
-                    if (missingHorses.Any())
-                    {
-                        return BadRequest(new { message = $"The following horse IDs do not exist: {string.Join(", ", missingHorses)}" });
-                    }
-
+                    // Verify all horses exist using raw SQL
                     foreach (var resultDto in addRaceDto.Results)
                     {
-                        var raceResult = new RaceResults
+                        var horseExists = await _context.Database
+                            .SqlQuery<int>($"SELECT COUNT(*) as Value FROM Horse WHERE HorseId = {resultDto.HorseId}")
+                            .FirstOrDefaultAsync() > 0;
+                            
+                        if (!horseExists)
                         {
-                            RaceId = race.RaceId,
-                            HorseId = resultDto.HorseId,
-                            Results = resultDto.Results,
-                            Prize = resultDto.Prize
-                        };
-                        _context.RaceResults.Add(raceResult);
+                            return BadRequest(new { message = $"Horse with ID '{resultDto.HorseId}' does not exist." });
+                        }
+
+                        // Insert race result using raw SQL
+                        await _context.Database.ExecuteSqlAsync(
+                            $"INSERT INTO RaceResults (raceId, horseId, results, prize) VALUES ({addRaceDto.RaceId}, {resultDto.HorseId}, {resultDto.Results}, {resultDto.Prize})"
+                        );
                     }
-                    await _context.SaveChangesAsync();
+                }
+
+                // Fetch the created race using raw SQL
+                var race = await _context.Races
+                    .FromSql($"SELECT * FROM Race WHERE raceId = {addRaceDto.RaceId}")
+                    .FirstOrDefaultAsync();
+
+                if (race == null)
+                {
+                    return BadRequest(new { message = "Race was created but could not be retrieved." });
                 }
 
                 return CreatedAtAction(nameof(AddRace), new { id = race.RaceId }, race);
@@ -105,25 +105,18 @@ namespace backend.Controllers
         {
             try
             {
-                // Check if owner exists
-                var owner = await _context.Owners.FindAsync(id);
-                if (owner == null)
+                // Check if owner exists using raw SQL
+                var ownerExists = await _context.Database
+                    .SqlQuery<int>($"SELECT COUNT(*) as Value FROM Owner WHERE OwnerId = {id}")
+                    .FirstOrDefaultAsync() > 0;
+                    
+                if (!ownerExists)
                 {
                     return NotFound(new { message = $"Owner with ID '{id}' not found" });
                 }
 
-                // Execute the stored procedure
-                var connectionString = _configuration.GetConnectionString("DefaultConnection");
-                using (var connection = new MySqlConnection(connectionString))
-                {
-                    await connection.OpenAsync();
-                    using (var command = new MySqlCommand("sp_DeleteOwner", connection))
-                    {
-                        command.CommandType = System.Data.CommandType.StoredProcedure;
-                        command.Parameters.AddWithValue("@p_ownerId", id);
-                        await command.ExecuteNonQueryAsync();
-                    }
-                }
+                // Execute the stored procedure using raw SQL
+                await _context.Database.ExecuteSqlAsync($"CALL sp_DeleteOwner({id})");
 
                 return Ok(new { message = $"Owner '{id}' and associated ownership records deleted successfully" });
             }
@@ -142,23 +135,32 @@ namespace backend.Controllers
         {
             try
             {
-                // Find the horse
-                var horse = await _context.Horses.FindAsync(horseId);
+                // Find the horse using raw SQL
+                var horse = await _context.Horses
+                    .FromSql($"SELECT * FROM Horse WHERE horseId = {horseId}")
+                    .FirstOrDefaultAsync();
+                    
                 if (horse == null)
                 {
                     return NotFound(new { message = $"Horse with ID '{horseId}' not found" });
                 }
 
-                // Verify the stable exists
-                var stable = await _context.Stables.FindAsync(newStableId);
+                // Verify the stable exists using raw SQL
+                var stable = await _context.Stables
+                    .FromSql($"SELECT * FROM Stable WHERE stableId = {newStableId}")
+                    .FirstOrDefaultAsync();
+                    
                 if (stable == null)
                 {
                     return NotFound(new { message = $"Stable with ID '{newStableId}' not found" });
                 }
 
                 var oldStableId = horse.StableId;
-                horse.StableId = newStableId;
-                await _context.SaveChangesAsync();
+                
+                // Update horse stable using raw SQL
+                await _context.Database.ExecuteSqlAsync(
+                    $"UPDATE Horse SET stableId = {newStableId} WHERE horseId = {horseId}"
+                );
 
                 return Ok(new 
                 { 
@@ -185,23 +187,32 @@ namespace backend.Controllers
         {
             try
             {
-                // Find the trainer
-                var trainer = await _context.Trainers.FindAsync(trainerId);
+                // Find the trainer using raw SQL
+                var trainer = await _context.Trainers
+                    .FromSql($"SELECT * FROM Trainer WHERE trainerId = {trainerId}")
+                    .FirstOrDefaultAsync();
+                    
                 if (trainer == null)
                 {
                     return NotFound(new { message = $"Trainer with ID '{trainerId}' not found" });
                 }
 
-                // Verify the stable exists
-                var stable = await _context.Stables.FindAsync(stableId);
+                // Verify the stable exists using raw SQL
+                var stable = await _context.Stables
+                    .FromSql($"SELECT * FROM Stable WHERE stableId = {stableId}")
+                    .FirstOrDefaultAsync();
+                    
                 if (stable == null)
                 {
                     return NotFound(new { message = $"Stable with ID '{stableId}' not found" });
                 }
 
                 var oldStableId = trainer.StableId;
-                trainer.StableId = stableId;
-                await _context.SaveChangesAsync();
+                
+                // Update trainer stable using raw SQL
+                await _context.Database.ExecuteSqlAsync(
+                    $"UPDATE Trainer SET stableId = {stableId} WHERE trainerId = {trainerId}"
+                );
 
                 return Ok(new 
                 { 
@@ -232,7 +243,9 @@ namespace backend.Controllers
         {
             try
             {
-                var tracks = await _context.Tracks.ToListAsync();
+                var tracks = await _context.Tracks
+                    .FromSqlRaw("SELECT * FROM Track")
+                    .ToListAsync();
                 return Ok(tracks);
             }
             catch (Exception ex)
@@ -259,25 +272,68 @@ namespace backend.Controllers
                     return BadRequest(new { message = "lastName query parameter is required" });
                 }
 
-                var result = await _context.Owners
-                    .Where(o => o.LastName.ToLower() == lastName.ToLower())
-                    .Select(o => new HorsesByOwnerDto
+                // Use raw SQL to get owners and their horses
+                var sql = @"
+                    SELECT 
+                        o.ownerId,
+                        o.lname as OwnerLastName,
+                        o.fname as OwnerFirstName,
+                        h.horseId,
+                        h.horseName,
+                        h.age,
+                        h.gender,
+                        h.registration,
+                        h.stableId,
+                        s.stableName
+                    FROM Owner o
+                    INNER JOIN Owns ow ON o.ownerId = ow.ownerId
+                    INNER JOIN Horse h ON ow.horseId = h.horseId
+                    LEFT JOIN Stable s ON h.stableId = s.stableId
+                    WHERE LOWER(o.lname) = LOWER({0})
+                    ORDER BY o.ownerId, h.horseId";
+
+                var connection = _context.Database.GetDbConnection();
+                await connection.OpenAsync();
+                
+                using var command = connection.CreateCommand();
+                command.CommandText = sql.Replace("{0}", "@lastName");
+                var parameter = command.CreateParameter();
+                parameter.ParameterName = "@lastName";
+                parameter.Value = lastName;
+                command.Parameters.Add(parameter);
+
+                var result = new List<HorsesByOwnerDto>();
+                using var reader = await command.ExecuteReaderAsync();
+                
+                HorsesByOwnerDto? currentOwner = null;
+                
+                while (await reader.ReadAsync())
+                {
+                    var ownerId = reader.GetString(0);
+                    
+                    if (currentOwner == null || currentOwner.OwnerId != ownerId)
                     {
-                        OwnerId = o.OwnerId,
-                        OwnerLastName = o.LastName,
-                        OwnerFirstName = o.FirstName,
-                        Horses = o.Owns.Select(own => new HorseInfoDto
+                        currentOwner = new HorsesByOwnerDto
                         {
-                            HorseId = own.Horse.HorseId,
-                            HorseName = own.Horse.HorseName,
-                            Age = own.Horse.Age,
-                            Gender = own.Horse.Gender,
-                            Registration = own.Horse.Registration,
-                            StableId = own.Horse.StableId,
-                            StableName = own.Horse.Stable != null ? own.Horse.Stable.StableName : null
-                        }).ToList()
-                    })
-                    .ToListAsync();
+                            OwnerId = ownerId,
+                            OwnerLastName = reader.GetString(1),
+                            OwnerFirstName = reader.GetString(2),
+                            Horses = new List<HorseInfoDto>()
+                        };
+                        result.Add(currentOwner);
+                    }
+                    
+                    currentOwner.Horses.Add(new HorseInfoDto
+                    {
+                        HorseId = reader.GetString(3),
+                        HorseName = reader.GetString(4),
+                        Age = reader.GetInt32(5),
+                        Gender = reader.GetString(6),
+                        Registration = reader.GetString(7),
+                        StableId = reader.IsDBNull(8) ? null : reader.GetString(8),
+                        StableName = reader.IsDBNull(9) ? null : reader.GetString(9)
+                    });
+                }
 
                 if (!result.Any())
                 {
@@ -301,45 +357,66 @@ namespace backend.Controllers
         {
             try
             {
-                // Get all trainers with their stables and horses that won first place
-                var trainersWithWinners = await _context.Trainers
-                    .Include(t => t.Stable)
-                    .Select(t => new
-                    {
-                        Trainer = t,
-                        WinningHorses = _context.RaceResults
-                            .Where(rr => rr.Results != null && rr.Results.ToLower() == "first" && 
-                                   rr.Horse.StableId == t.StableId)
-                            .Include(rr => rr.Horse)
-                            .Include(rr => rr.Race)
-                            .Select(rr => new WinningHorseDto
-                            {
-                                HorseId = rr.Horse.HorseId,
-                                HorseName = rr.Horse.HorseName,
-                                RaceId = rr.Race.RaceId,
-                                RaceName = rr.Race.RaceName,
-                                Prize = rr.Prize
-                            })
-                            .ToList()
-                    })
-                    .ToListAsync();
+                // Use raw SQL to get trainers with first place winners
+                var sql = @"
+                    SELECT 
+                        t.trainerId,
+                        t.lname as TrainerLastName,
+                        t.fname as TrainerFirstName,
+                        t.stableId,
+                        s.stableName,
+                        h.horseId,
+                        h.horseName,
+                        r.raceId,
+                        r.raceName,
+                        rr.prize,
+                        COUNT(*) OVER (PARTITION BY t.trainerId) as FirstPlaceWins
+                    FROM Trainer t
+                    INNER JOIN Stable s ON t.stableId = s.stableId
+                    INNER JOIN Horse h ON h.stableId = t.stableId
+                    INNER JOIN RaceResults rr ON h.horseId = rr.horseId
+                    INNER JOIN Race r ON rr.raceId = r.raceId
+                    WHERE LOWER(rr.results) = 'first'
+                    ORDER BY FirstPlaceWins DESC, t.trainerId, r.raceId";
 
-                // Filter trainers who have at least one winning horse
-                var result = trainersWithWinners
-                    .Where(t => t.WinningHorses.Any())
-                    .Select(t => new TrainerWinnersDto
-                    {
-                        TrainerId = t.Trainer.TrainerId,
-                        TrainerLastName = t.Trainer.LastName,
-                        TrainerFirstName = t.Trainer.FirstName,
-                        StableId = t.Trainer.StableId,
-                        StableName = t.Trainer.Stable != null ? t.Trainer.Stable.StableName : null,
-                        FirstPlaceWins = t.WinningHorses.Count,
-                        WinningHorses = t.WinningHorses
-                    })
-                    .OrderByDescending(t => t.FirstPlaceWins)
-                    .ToList();
+                var connection = _context.Database.GetDbConnection();
+                await connection.OpenAsync();
+                
+                using var command = connection.CreateCommand();
+                command.CommandText = sql;
 
+                var trainerDict = new Dictionary<string, TrainerWinnersDto>();
+                using var reader = await command.ExecuteReaderAsync();
+                
+                while (await reader.ReadAsync())
+                {
+                    var trainerId = reader.GetString(0);
+                    
+                    if (!trainerDict.ContainsKey(trainerId))
+                    {
+                        trainerDict[trainerId] = new TrainerWinnersDto
+                        {
+                            TrainerId = trainerId,
+                            TrainerLastName = reader.GetString(1),
+                            TrainerFirstName = reader.GetString(2),
+                            StableId = reader.GetString(3),
+                            StableName = reader.GetString(4),
+                            FirstPlaceWins = reader.GetInt32(10),
+                            WinningHorses = new List<WinningHorseDto>()
+                        };
+                    }
+                    
+                    trainerDict[trainerId].WinningHorses.Add(new WinningHorseDto
+                    {
+                        HorseId = reader.GetString(5),
+                        HorseName = reader.GetString(6),
+                        RaceId = reader.GetString(7),
+                        RaceName = reader.GetString(8),
+                        Prize = reader.IsDBNull(9) ? null : reader.GetDecimal(9)
+                    });
+                }
+
+                var result = trainerDict.Values.ToList();
                 return Ok(result);
             }
             catch (Exception ex)
@@ -357,34 +434,45 @@ namespace backend.Controllers
         {
             try
             {
-                // Get trainers with their total winnings from horses in their stable
-                var trainersWithWinnings = await _context.Trainers
-                    .Include(t => t.Stable)
-                    .Select(t => new
-                    {
-                        Trainer = t,
-                        TotalWinnings = _context.RaceResults
-                            .Where(rr => rr.Horse.StableId == t.StableId && rr.Prize.HasValue)
-                            .Sum(rr => (decimal?)rr.Prize) ?? 0,
-                        TotalWins = _context.RaceResults
-                            .Count(rr => rr.Horse.StableId == t.StableId && 
-                                   rr.Results != null && rr.Results.ToLower() == "first")
-                    })
-                    .ToListAsync();
+                // Use raw SQL to get trainers sorted by total winnings
+                var sql = @"
+                    SELECT 
+                        t.trainerId,
+                        t.lname,
+                        t.fname,
+                        t.stableId,
+                        s.stableName,
+                        COALESCE(SUM(rr.prize), 0) as TotalWinnings,
+                        COUNT(CASE WHEN LOWER(rr.results) = 'first' THEN 1 END) as TotalWins
+                    FROM Trainer t
+                    INNER JOIN Stable s ON t.stableId = s.stableId
+                    LEFT JOIN Horse h ON h.stableId = t.stableId
+                    LEFT JOIN RaceResults rr ON h.horseId = rr.horseId
+                    GROUP BY t.trainerId, t.lname, t.fname, t.stableId, s.stableName
+                    ORDER BY TotalWinnings DESC";
 
-                var result = trainersWithWinnings
-                    .Select(t => new TrainerWinningsDto
+                var connection = _context.Database.GetDbConnection();
+                await connection.OpenAsync();
+                
+                using var command = connection.CreateCommand();
+                command.CommandText = sql;
+
+                var result = new List<TrainerWinningsDto>();
+                using var reader = await command.ExecuteReaderAsync();
+                
+                while (await reader.ReadAsync())
+                {
+                    result.Add(new TrainerWinningsDto
                     {
-                        TrainerId = t.Trainer.TrainerId,
-                        TrainerLastName = t.Trainer.LastName,
-                        TrainerFirstName = t.Trainer.FirstName,
-                        StableId = t.Trainer.StableId,
-                        StableName = t.Trainer.Stable != null ? t.Trainer.Stable.StableName : null,
-                        TotalWinnings = t.TotalWinnings,
-                        TotalWins = t.TotalWins
-                    })
-                    .OrderByDescending(t => t.TotalWinnings)
-                    .ToList();
+                        TrainerId = reader.GetString(0),
+                        TrainerLastName = reader.GetString(1),
+                        TrainerFirstName = reader.GetString(2),
+                        StableId = reader.GetString(3),
+                        StableName = reader.GetString(4),
+                        TotalWinnings = reader.GetDecimal(5),
+                        TotalWins = reader.GetInt32(6)
+                    });
+                }
 
                 return Ok(result);
             }
@@ -403,26 +491,44 @@ namespace backend.Controllers
         {
             try
             {
-                var trackStats = await _context.Tracks
-                    .Select(t => new TrackStatsDto
-                    {
-                        TrackName = t.TrackName,
-                        Location = t.Location,
-                        Length = t.Length,
-                        TotalRaces = t.Races.Count,
-                        TotalHorseParticipants = t.Races
-                            .SelectMany(r => r.RaceResults)
-                            .Count(),
-                        UniqueHorses = t.Races
-                            .SelectMany(r => r.RaceResults)
-                            .Select(rr => rr.HorseId)
-                            .Distinct()
-                            .Count()
-                    })
-                    .OrderByDescending(t => t.TotalRaces)
-                    .ToListAsync();
+                // Use raw SQL to get track statistics
+                var sql = @"
+                    SELECT 
+                        t.trackName,
+                        t.location,
+                        t.length,
+                        COUNT(DISTINCT r.raceId) as TotalRaces,
+                        COUNT(rr.horseId) as TotalHorseParticipants,
+                        COUNT(DISTINCT rr.horseId) as UniqueHorses
+                    FROM Track t
+                    LEFT JOIN Race r ON t.trackName = r.trackName
+                    LEFT JOIN RaceResults rr ON r.raceId = rr.raceId
+                    GROUP BY t.trackName, t.location, t.length
+                    ORDER BY TotalRaces DESC";
 
-                return Ok(trackStats);
+                var connection = _context.Database.GetDbConnection();
+                await connection.OpenAsync();
+                
+                using var command = connection.CreateCommand();
+                command.CommandText = sql;
+
+                var result = new List<TrackStatsDto>();
+                using var reader = await command.ExecuteReaderAsync();
+                
+                while (await reader.ReadAsync())
+                {
+                    result.Add(new TrackStatsDto
+                    {
+                        TrackName = reader.GetString(0),
+                        Location = reader.GetString(1),
+                        Length = reader.GetDecimal(2),
+                        TotalRaces = reader.GetInt32(3),
+                        TotalHorseParticipants = reader.GetInt32(4),
+                        UniqueHorses = reader.GetInt32(5)
+                    });
+                }
+
+                return Ok(result);
             }
             catch (Exception ex)
             {
