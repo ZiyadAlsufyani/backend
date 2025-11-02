@@ -31,6 +31,20 @@ namespace backend.Controllers
         {
             try
             {
+                // Verify the track exists
+                var trackExists = await _context.Tracks.AnyAsync(t => t.TrackName == addRaceDto.TrackName);
+                if (!trackExists)
+                {
+                    return BadRequest(new { message = $"Track '{addRaceDto.TrackName}' does not exist. Please use an existing track or create the track first." });
+                }
+
+                // Verify the race doesn't already exist
+                var raceExists = await _context.Races.AnyAsync(r => r.RaceId == addRaceDto.RaceId);
+                if (raceExists)
+                {
+                    return BadRequest(new { message = $"Race with ID '{addRaceDto.RaceId}' already exists." });
+                }
+
                 // Create the race
                 var race = new Race
                 {
@@ -47,6 +61,19 @@ namespace backend.Controllers
                 // Add race results if provided
                 if (addRaceDto.Results != null && addRaceDto.Results.Any())
                 {
+                    // Verify all horses exist
+                    var horseIds = addRaceDto.Results.Select(r => r.HorseId).Distinct().ToList();
+                    var existingHorseIds = await _context.Horses
+                        .Where(h => horseIds.Contains(h.HorseId))
+                        .Select(h => h.HorseId)
+                        .ToListAsync();
+                    
+                    var missingHorses = horseIds.Except(existingHorseIds).ToList();
+                    if (missingHorses.Any())
+                    {
+                        return BadRequest(new { message = $"The following horse IDs do not exist: {string.Join(", ", missingHorses)}" });
+                    }
+
                     foreach (var resultDto in addRaceDto.Results)
                     {
                         var raceResult = new RaceResults
@@ -189,6 +216,28 @@ namespace backend.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { message = "Failed to approve trainer", error = ex.Message });
+            }
+        }
+
+        #endregion
+
+        #region Helper Endpoints
+
+        /// <summary>
+        /// Get all available tracks (useful for validation before adding races)
+        /// GET /api/tracks
+        /// </summary>
+        [HttpGet("tracks")]
+        public async Task<ActionResult<IEnumerable<Track>>> GetAllTracks()
+        {
+            try
+            {
+                var tracks = await _context.Tracks.ToListAsync();
+                return Ok(tracks);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Failed to retrieve tracks", error = ex.Message });
             }
         }
 
